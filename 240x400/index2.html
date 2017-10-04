@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ghost.musical 240x400, html5</title>
+
+<script src="images2.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.6/pixi.min.js"></script>
+<style>
+  .banner-240x400 {
+    width:240px;
+    height:400px;
+    overflow:hidden;
+    background:#ffffff;
+    border:1px solid black;
+  }
+</style>
+</head>
+<body>
+  <div class="banner-240x400"></div>
+  <script>
+  var Container = PIXI.Container,
+      autoDetectRenderer = PIXI.autoDetectRenderer,
+      loader = PIXI.loader,
+      resources = PIXI.loader.resources,
+      Sprite = PIXI.Sprite,
+      renderer,
+      sam,molly,logo,button;
+
+
+  function startShow(){
+    molly.in(1000);
+    setTimeout(function(){
+       sam.in(1000);
+    },500);
+
+    setTimeout(function(){
+      logo.in(2000);
+    },1000);
+
+    setTimeout(function(){
+      button.in(1000);
+    },2000);
+
+    setTimeout(function(){
+      txt.in(1000);
+    },2000);
+
+    // setTimeout(function(){
+    //   sam.out();
+    //   molly.out();
+    // },10000);
+    //
+    // setTimeout(startShow,15000);
+
+
+  }
+
+  function setup() {
+    renderer = autoDetectRenderer(240,400,{antialias: false, transparent: false, resolution: 1, backgroundColor:0xffffff});
+    document.querySelector('.banner-240x400').appendChild(renderer.view);
+
+    var stage0=new Container();
+
+    var logos=new Sprite(PIXI.Texture.fromImage(logoImg));
+    stage0.addChild(logos);
+
+    molly=new AlphaImage(PIXI.Texture.fromImage(mollyImg),stage0,{x0:10});
+    sam=new AlphaImage(PIXI.Texture.fromImage(samImg),stage0,{x0:-10});
+    button=new AlphaImage(PIXI.Texture.fromImage(buttonImg),stage0,{y:342,x:44,y0:342,x0:30,scale0:1.1});
+    logo=new AlphaImage(PIXI.Texture.fromImage(mainLogoImg),stage0,{y:258,x:6,y0:258,x0:0,scale0:1.1});
+    txt=new AlphaImage(PIXI.Texture.fromImage(txtImg),stage0,{y:315,x:39,y0:315,x0:29,scale0:1.1});
+
+    var stage1=new CirclesStage(circleImg,10,stage0);
+
+    gameLoop();
+    function gameLoop(){
+      requestAnimationFrame(gameLoop);
+      stage1.onTick();
+      molly.onTick();
+      sam.onTick();
+      button.onTick();
+      logo.onTick();
+      txt.onTick();
+      renderer.render(stage0);
+    }
+
+    startShow();
+  }
+
+//NOTE: Circle
+  function Circle(maxX,maxY,stage,texture){
+    this.maxX=maxX;
+    this.maxY=maxY;
+    this.sprite=new Sprite(texture);
+    this.sprite.anchor.set(0.5);
+    this.reset(true);
+    this.move();
+    stage.addChild(this.sprite);
+  }
+
+  Circle.prototype.reset=function(doResetStep){
+     this.x0=Math.random()*this.maxX;
+     this.y0=this.maxY/2-50;
+
+     this.maxSteps=300+Math.random()*300;
+
+     this.sprite.scale=new PIXI.Point(this.maxSteps/600,this.maxSteps/600);
+    this.step=doResetStep?Math.floor(Math.random()*10000)%this.maxSteps:0;
+
+    var a=Math.random()*2*3.14;
+    var x1=200*Math.cos(a);
+    var y1=200*Math.sin(a);
+
+    this.dX=x1/this.maxSteps;
+    this.dY=y1/this.maxSteps;
+  }
+
+  Circle.prototype.move=function(){
+    this.sprite.x=this.x0+this.step*this.dX;
+    this.sprite.y=this.y0+this.step*this.dY;
+    this.sprite.alpha=0.5-Math.abs(this.maxSteps/2-this.step)/(this.maxSteps);
+  }
+
+  Circle.prototype.onTick=function(){
+    this.step++;
+    if(this.step>this.maxSteps){
+      this.reset(false);
+    };
+    this.move();
+  }
+
+//NOTE: CirclesStage
+  function CirclesStage(image,nItems,parent){
+    this.nItems=nItems;
+    this.stage=new PIXI.particles.ParticleContainer(100,{
+      scale:true,
+      alpha:true,
+      position:true
+    });
+    parent.addChild(this.stage);
+    this.circles=[];
+
+    var texture=PIXI.Texture.fromImage(image)
+
+    for(var cnt=0;cnt<this.nItems;cnt++){
+      this.circles.push(new Circle(240,400,this.stage,texture));
+    };
+  }
+
+  CirclesStage.prototype.onTick=function(){
+    for(var cnt=0;cnt<this.nItems;cnt++){
+      this.circles[cnt].onTick();
+    };
+  }
+
+//NOTE: AlphaImage
+  function AlphaImage(texture,parent,options){
+    this.settings={
+      x:0,
+      y:0,
+      x0:0,
+      y0:0,
+      scale:1,
+      scale0:1,
+      alpha:1,
+      alpha0:0,
+      long:1000
+    };
+    if(options)
+      for(var o in options)
+        this.settings[o]=options[o];
+
+    this.sprite=new Sprite(texture);
+    parent.addChild(this.sprite);
+    this.sprite.alpha=this.settings.alpha0;
+    this.sprite.x=this.settings.x0;
+    this.sprite.y=this.settings.y0;
+    this.sprite.scale={x:this.settings.scale0,y:this.settings.scale0};
+    this.mode=0;
+  }
+  AlphaImage.prototype.in=function(long){
+    if(!long){
+      long=this.settings.long;
+    };
+    this.maxStep=long/1000*60;
+    this.dest={
+      alpha:this.settings.alpha,
+      x:this.settings.x,
+      y:this.settings.y,
+      scale:this.settings.scale
+    };
+    this.d={
+      alpha:(this.dest.alpha-this.sprite.alpha)/this.maxStep,
+      x:(this.dest.x-this.sprite.x)/this.maxStep,
+      y:(this.dest.y-this.sprite.y)/this.maxStep,
+      scale:(this.dest.scale-this.sprite.scale.x)/this.maxStep
+    };
+
+    this.step=0;
+    this.mode=1;
+  }
+  AlphaImage.prototype.out=function(long){
+    if(!long){
+      long=this.settings.long;
+    };
+    this.maxStep=long/1000*60;
+    this.dest={
+      alpha:this.settings.alpha0,
+      x:this.settings.x0,
+      y:this.settings.y0,
+      scale:this.settings.scale0
+    };
+    this.d={
+      alpha:(this.dest.alpha-this.sprite.alpha)/this.maxStep,
+      x:(this.dest.x-this.sprite.x)/this.maxStep,
+      y:(this.dest.y-this.sprite.y)/this.maxStep,
+      scale:(this.dest.scale-this.sprite.scale.x)/this.maxStep
+    };
+    this.step=0;
+    this.mode=1;
+  }
+  AlphaImage.prototype.onTick=function(){
+    if(this.mode!=1) return;
+    if(this.step>=this.maxStep){
+      this.apply(this.dest);
+      this.mode=2;
+    } else {
+      if(this.d.alpha){
+        this.sprite.alpha+=this.d.alpha;
+      };
+      if(this.d.x){
+        this.sprite.x+=this.d.x;
+      };
+      if(this.d.y){
+        this.sprite.y+=this.d.y;
+      };
+      if(this.d.scale){
+        var s=this.sprite.scale.x+this.d.scale;
+        this.sprite.scale={x:s,y:s};
+      };
+      this.step++;
+    }
+  }
+  AlphaImage.prototype.apply=function(trans){
+    this.sprite.alpha=trans.alpha;
+    this.sprite.x=trans.x;
+    this.sprite.y=trans.y;
+    this.sprite.scale={x:trans.scale,y:trans.scale};
+  }
+
+  window.addEventListener('load',setup,false);
+
+  </script>
+</body>
+</html>

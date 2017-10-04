@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ghost.musical 240x400, html5</title>
+
+<script src="images.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.5.6/pixi.min.js"></script>
+<style>
+  .banner-240x400 {
+    width:240px;
+    height:400px;
+    overflow:hidden;
+    background:#ffffff;
+    border:1px solid black;
+  }
+</style>
+</head>
+<body>
+  <div class="banner-240x400"></div>
+  <script>
+  var Container = PIXI.Container,
+      autoDetectRenderer = PIXI.autoDetectRenderer,
+      loader = PIXI.loader,
+      resources = PIXI.loader.resources,
+      Sprite = PIXI.Sprite,
+      renderer,
+      stage;
+
+  function setup() {
+    renderer = autoDetectRenderer(240,400,{antialias: false, transparent: false, resolution: 1, backgroundColor:0xffffff});
+    document.querySelector('.banner-240x400').appendChild(renderer.view);
+
+    var stage0=new Container();
+    var logos=new Sprite(PIXI.Texture.fromImage(logoImg));
+    stage0.addChild(logos);
+
+    var stage2=new ImageStage(PIXI.Texture.fromImage(pairImg),4,10,stage0,120,100);
+    var stage1=new CirclesStage(circleImg,10,stage0);
+
+
+
+    gameLoop();
+    function gameLoop(){
+      requestAnimationFrame(gameLoop);
+      stage1.onTick();
+      stage2.onTick();
+      renderer.render(stage0);
+    }
+  }
+
+
+  function Circle(maxX,maxY,stage,texture){
+    this.maxX=maxX;
+    this.maxY=maxY;
+    this.sprite=new Sprite(texture);
+    this.sprite.anchor.set(0.5);
+    this.reset(true);
+    this.move();
+    stage.addChild(this.sprite);
+  }
+
+  Circle.prototype.reset=function(doResetStep){
+     this.x0=Math.random()*this.maxX;
+     this.y0=this.maxY/2-50;
+
+     this.maxSteps=300+Math.random()*300;
+
+     this.sprite.scale=new PIXI.Point(this.maxSteps/600,this.maxSteps/600);
+    this.step=doResetStep?Math.floor(Math.random()*10000)%this.maxSteps:0;
+
+    var a=Math.random()*2*3.14;
+    var x1=200*Math.cos(a);
+    var y1=200*Math.sin(a);
+
+    this.dX=x1/this.maxSteps;
+    this.dY=y1/this.maxSteps;
+  }
+
+  Circle.prototype.move=function(){
+    this.sprite.x=this.x0+this.step*this.dX;
+    this.sprite.y=this.y0+this.step*this.dY;
+    this.sprite.alpha=0.5-Math.abs(this.maxSteps/2-this.step)/(this.maxSteps);
+  }
+
+  Circle.prototype.onTick=function(){
+    this.step++;
+    if(this.step>this.maxSteps){
+      this.reset(false);
+    };
+    this.move();
+  }
+
+  function CirclesStage(image,nItems,parent){
+    this.nItems=nItems;
+    this.stage=new PIXI.particles.ParticleContainer(100,{
+      alpha:true,
+      position:true
+    });
+    parent.addChild(this.stage);
+    this.circles=[];
+
+    var texture=PIXI.Texture.fromImage(image)
+
+    for(var cnt=0;cnt<this.nItems;cnt++){
+      this.circles.push(new Circle(240,400,this.stage,texture));
+    };
+  }
+
+  CirclesStage.prototype.onTick=function(){
+    for(var cnt=0;cnt<this.nItems;cnt++){
+      this.circles[cnt].onTick();
+    };
+  }
+
+  function ImageStage(texture,xTiles,yTiles,parent,x0,y0){
+    this.isDone=false;
+    this.stage=new PIXI.particles.ParticleContainer(xTiles*yTiles,{
+      position:true,
+      scale:true
+    });
+    parent.addChild(this.stage);
+    this.texture=texture;
+    this.tiles=[];
+    var w=240/xTiles;
+    var h=400/yTiles;
+    for(var x=0;x<xTiles;x++){
+      this.tiles[x]=[];
+      for(var y=0;y<yTiles;y++){
+        this.tiles[x][y]=new ImageTile(x0,y0,x,y,w,h,this.stage,texture);
+      }
+    }
+  }
+
+  ImageStage.prototype.onTick=function(){
+    if(this.isDone){
+      return;
+    };
+    var done=true;
+    for(var x=0;x<this.tiles.length;x++){
+      for(var y=0;y<this.tiles[x].length;y++){
+        done=this.tiles[x][y].onTick() && done;
+      }
+    }
+    this.isDone=done;
+    if(this.isDone){
+      for(var x=0;x<this.tiles.length;x++){
+        for(var y=0;y<this.tiles[x].length;y++){
+          this.tiles[x][y].destroy();
+        }
+      }
+      this.tiles=[];
+      this.stage.addChild(new Sprite(this.texture));
+    }
+  }
+
+  function ImageTile(x0,y0,x,y,w,h,stage,texture){
+    this.x0=x0;
+    this.y0=y0;
+
+    this.x1=x*w;
+    this.y1=y*h;
+    this.maxSteps=20+Math.random()*50;
+    this.dX=(this.x1-this.x0)/this.maxSteps;
+    this.dY=(this.y1-this.y0)/this.maxSteps;
+
+    this.sprite=new Sprite(new PIXI.Texture(texture, new PIXI.Rectangle(this.x1, this.y1, w, h)));
+    //this.sprite.anchor.set(0.5);
+    this.reset(false);
+    //this.step=200;
+    this.move();
+    stage.addChild(this.sprite);
+  }
+
+  ImageTile.prototype.reset=function(doResetStep){
+    this.step=doResetStep?Math.floor(Math.random()*10000)%this.maxSteps:0;
+  }
+
+  ImageTile.prototype.move=function(){
+    var s=this.step/this.maxSteps;
+    this.sprite.scale={x:s,y:s};
+    this.sprite.x=this.x0+this.dX*this.step;
+    this.sprite.y=this.y0+this.dY*this.step;
+  }
+
+  ImageTile.prototype.destroy=function(){
+    this.sprite.destroy({
+      children:true,
+      texture:true
+    })
+  }
+
+  ImageTile.prototype.onTick=function(){
+    if(this.step>this.maxSteps){
+      this.sprite.scale={x:1,y:1};
+      this.sprite.x=this.x1;
+      this.sprite.y=this.y1;
+      return true;
+    } else {
+      this.move();
+    };
+    this.step++;
+    return false;
+  }
+
+
+  window.addEventListener('load',setup,false);
+
+  </script>
+</body>
+</html>
